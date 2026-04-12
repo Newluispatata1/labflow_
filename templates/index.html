@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabFlow — Gestión de Reactivos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f14;
+  --surface: #16181f;
+  --surface2: #1e2029;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --accent: #7c6af7;
+  --accent2: #a78bfa;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --teal: #2dd4bf;
+  --blue: #60a5fa;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.25rem;flex-shrink:0}
+.main{flex:1;overflow:auto;padding:2rem}
+
+/* Sidebar */
+.logo{display:flex;align-items:center;gap:10px;padding:.75rem .5rem 1.5rem;margin-bottom:.5rem}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#4f46e5);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.logo-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:1px}
+
+.nav-item{display:flex;align-items:center;gap:10px;padding:.6rem .75rem;border-radius:var(--radius-sm);cursor:pointer;color:var(--muted);font-size:13px;font-weight:400;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(124,106,247,.15);color:var(--accent2);font-weight:500}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.nav-section{font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:.5rem .75rem;margin-top:.75rem}
+
+/* Header */
+.page-header{margin-bottom:1.75rem}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--text)}
+.page-sub{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.card-title{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:1rem}
+
+/* Stat cards */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
+.stat-label{font-size:11px;color:var(--muted);margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:600;line-height:1;letter-spacing:-.03em}
+.stat-value.purple{color:var(--accent2)}
+.stat-value.green{color:var(--green)}
+.stat-value.amber{color:var(--amber)}
+.stat-value.red{color:var(--red)}
+
+/* Grid layouts */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+
+/* Table */
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:500;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);letter-spacing:.04em;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Progress */
+.progress{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.fill-green{background:var(--green)}
+.fill-amber{background:var(--amber)}
+.fill-red{background:var(--red)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace}
+.badge-ext{background:rgba(96,165,250,.15);color:var(--blue)}
+.badge-int{background:rgba(167,139,250,.15);color:var(--accent2)}
+.badge-nuc{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-warn{background:rgba(251,191,36,.12);color:var(--amber)}
+.badge-crit{background:rgba(248,113,113,.12);color:var(--red)}
+.badge-ok{background:rgba(52,211,153,.12);color:var(--green)}
+
+/* Form elements */
+.form-row{margin-bottom:.875rem}
+.form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+input[type=text],input[type=number],select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--surface2)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif}
+.btn:hover{background:rgba(255,255,255,.08)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#6d5ce8}
+.btn-danger{color:var(--red);border-color:rgba(248,113,113,.3)}
+.btn-danger:hover{background:rgba(248,113,113,.1)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:1rem}
+
+/* Calendar */
+.cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.cal-month{font-size:15px;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{font-size:10px;color:var(--muted);text-align:center;padding:4px;font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;border:1px solid transparent;transition:all .15s;gap:2px;position:relative}
+.cal-day:hover{background:var(--surface2);border-color:var(--border2)}
+.cal-day.has-pts{background:rgba(124,106,247,.1);border-color:rgba(124,106,247,.3);color:var(--accent2)}
+.cal-day.today{border-color:var(--accent) !important}
+.cal-day.empty{opacity:0;pointer-events:none}
+.cal-day .pts-dot{font-size:9px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent2)}
+
+/* Alerts */
+.alert-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.alert-item:last-child{border-bottom:none}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;min-width:320px;max-width:420px;width:90%}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.25rem}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem}
+
+/* Page sections */
+.section{display:none}
+.section.active{display:block}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:13px;z-index:9999;animation:slideUp .2s ease;pointer-events:none}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Mono numbers */
+.mono{font-family:'DM Mono',monospace}
+
+/* Days remaining pill */
+.days-pill{font-family:'DM Mono',monospace;font-size:11px;padding:2px 7px;border-radius:20px}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🧪</div>
+      <div>
+        <div class="logo-text">LabFlow</div>
+        <div class="logo-sub">Citometría · Cancún</div>
+      </div>
+    </div>
+
+    <button class="nav-item active" onclick="nav('dashboard')">
+      <span class="nav-icon">◈</span> Dashboard
+    </button>
+    <button class="nav-item" onclick="nav('calendar')">
+      <span class="nav-icon">◷</span> Calendario
+    </button>
+    <button class="nav-item" onclick="nav('prediction')">
+      <span class="nav-icon">◉</span> Predicción
+    </button>
+
+    <div class="nav-section">Inventario</div>
+    <button class="nav-item" onclick="nav('reagents')">
+      <span class="nav-icon">◎</span> Reactivos base
+    </button>
+    <button class="nav-item" onclick="nav('antibodies')">
+      <span class="nav-icon">◌</span> Anticuerpos
+    </button>
+    <button class="nav-item" onclick="nav('panels')">
+      <span class="nav-icon">▣</span> Paneles / Tubos
+    </button>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="section active">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="today-label"></div>
+      </div>
+      <div class="stats-row" id="stat-cards"></div>
+      <div class="grid2" style="margin-bottom:1rem">
+        <div class="card">
+          <div class="card-title">Reactivos — estado actual</div>
+          <table id="dash-reagents"></table>
+        </div>
+        <div class="card">
+          <div class="card-title">Alertas de reabastecimiento</div>
+          <div id="dash-alerts"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Anticuerpos — estado actual</div>
+        <table id="dash-abs"></table>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="sec-calendar" class="section">
+      <div class="page-header">
+        <div class="page-title">Calendario de pacientes</div>
+        <div class="page-sub">Haz clic en cualquier día para asignar pacientes</div>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-nav">
+          <button class="btn btn-sm" onclick="prevMonth()">← Anterior</button>
+          <span class="cal-month" id="cal-label"></span>
+          <button class="btn btn-sm" onclick="nextMonth()">Siguiente →</button>
+        </div>
+        <div class="cal-grid" id="cal-dow"></div>
+        <div class="cal-grid" style="margin-top:4px" id="cal-body"></div>
+      </div>
+    </div>
+
+    <!-- PREDICTION -->
+    <div id="sec-prediction" class="section">
+      <div class="page-header">
+        <div class="page-title">Predicción de consumo</div>
+        <div class="page-sub">Proyección de los próximos 30 días basada en el calendario</div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">Consumo diario proyectado</div>
+        <table id="pred-daily"></table>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Resumen reactivos — 30 días</div>
+          <table id="pred-reagents"></table>
+        </div>
+        <div class="card">
+          <div class="card-title">Resumen anticuerpos — 30 días</div>
+          <table id="pred-abs"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAGENTS -->
+    <div id="sec-reagents" class="section">
+      <div class="page-header">
+        <div class="page-title">Reactivos base</div>
+        <div class="page-sub">FACS Lysing, FIX &amp; PERM, PBS y otros reactivos por paciente</div>
+      </div>
+      <div class="grid2" style="margin-bottom:1rem">
+        <div class="card">
+          <div class="card-title">Agregar reactivo</div>
+          <div class="form-row"><label>Nombre del reactivo</label><input type="text" id="r-name" placeholder="ej. FACS Lysing Solution"></div>
+          <div class="form-row"><label>Volumen en stock (mL)</label><input type="number" id="r-vol" placeholder="100" min="0" step="0.1"></div>
+          <div class="form-row"><label>Volumen usado por paciente (µL)</label><input type="number" id="r-use" placeholder="500" min="0"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="addReagent()">+ Agregar</button></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Editar stock</div>
+          <div id="edit-reagent-panel" style="color:var(--muted);font-size:13px">Selecciona un reactivo de la tabla para editar su stock.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Todos los reactivos</div>
+        <table id="reagent-table"></table>
+      </div>
+    </div>
+
+    <!-- ANTIBODIES -->
+    <div id="sec-antibodies" class="section">
+      <div class="page-header">
+        <div class="page-title">Anticuerpos</div>
+        <div class="page-sub">Configura nombre, volumen total, µL por tubo y tipo de tinción</div>
+      </div>
+      <div class="grid2" style="margin-bottom:1rem">
+        <div class="card">
+          <div class="card-title">Agregar anticuerpo</div>
+          <div class="form-row"><label>Nombre</label><input type="text" id="ab-name" placeholder="ej. CD3 PE"></div>
+          <div class="grid2" style="gap:8px">
+            <div class="form-row"><label>Volumen total (µL)</label><input type="number" id="ab-vol" placeholder="500" min="0"></div>
+            <div class="form-row"><label>µL por tubo</label><input type="number" id="ab-use" placeholder="7" min="1"></div>
+          </div>
+          <div class="form-row"><label>Tipo de tinción</label>
+            <select id="ab-type">
+              <option value="ext">Extracelular</option>
+              <option value="int">Intracelular</option>
+              <option value="nuc">Nuclear</option>
+            </select>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="addAntibody()">+ Agregar</button></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Editar anticuerpo</div>
+          <div id="edit-ab-panel" style="color:var(--muted);font-size:13px">Selecciona un anticuerpo de la tabla para editarlo.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Todos los anticuerpos</div>
+        <table id="ab-table"></table>
+      </div>
+    </div>
+
+    <!-- PANELS -->
+    <div id="sec-panels" class="section">
+      <div class="page-header">
+        <div class="page-title">Paneles y tubos</div>
+        <div class="page-sub">Cada panel = un tubo por paciente. Determina cuántos tubos se preparan.</div>
+      </div>
+      <div class="grid2" style="margin-bottom:1rem">
+        <div class="card">
+          <div class="card-title">Agregar panel</div>
+          <div class="form-row"><label>Nombre del panel</label><input type="text" id="p-name" placeholder="ej. Panel Linfocitos T/B/NK"></div>
+          <div class="form-row"><label>Tipo de tinción</label>
+            <select id="p-type">
+              <option value="ext">Extracelular</option>
+              <option value="int">Intracelular</option>
+              <option value="nuc">Nuclear</option>
+            </select>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="addPanel()">+ Agregar</button></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Acerca de los paneles</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.7">Cada panel representa un tubo que se prepara por paciente. Los anticuerpos de tipo <span class="badge badge-ext">extracelular</span> se asignan a paneles extracelulares, y así sucesivamente. El sistema usa el número de paneles por tipo para calcular cuántos tubos consume cada anticuerpo.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Paneles configurados</div>
+        <table id="panel-table"></table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modal-container"></div>
+
+<script>
+const API = '';
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const TYPE_LABEL = {ext:'Extracelular',int:'Intracelular',nuc:'Nuclear'};
+const TYPE_BADGE = {ext:'badge-ext',int:'badge-int',nuc:'badge-nuc'};
+
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calData = {};
+
+// State cache
+let state = {reagents:[],antibodies:[],panels:[]};
+
+async function apiFetch(path, opts={}) {
+  const r = await fetch(API + path, {
+    headers:{'Content-Type':'application/json'},
+    ...opts
+  });
+  return r.json();
+}
+
+async function loadState() {
+  const [reagents, antibodies, panels] = await Promise.all([
+    apiFetch('/api/reagents'),
+    apiFetch('/api/antibodies'),
+    apiFetch('/api/panels'),
+  ]);
+  state = {reagents, antibodies, panels};
+}
+
+// Navigation
+function nav(section) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-'+section).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(section==='dashboard') renderDashboard();
+  if(section==='calendar') renderCalendar();
+  if(section==='prediction') renderPrediction();
+  if(section==='reagents') renderReagents();
+  if(section==='antibodies') renderAntibodies();
+  if(section==='panels') renderPanels();
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  document.getElementById('today-label').textContent =
+    new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  await loadState();
+  const pred = await apiFetch('/api/prediction?days=30');
+
+  const totalPts = pred.daily.reduce((s,d)=>s+d.patients,0);
+  const critR = pred.reagent_summary.filter(r=>r.days_until_empty!==null&&r.days_until_empty<=14).length;
+  const critAb = pred.antibody_summary.filter(a=>a.days_until_empty!==null&&a.days_until_empty<=14).length;
+
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Pacientes — próx. 30 días</div><div class="stat-value purple mono">${totalPts}</div></div>
+    <div class="stat-card"><div class="stat-label">Reactivos registrados</div><div class="stat-value mono">${state.reagents.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Anticuerpos registrados</div><div class="stat-value mono">${state.antibodies.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Alertas críticas (&lt;14 días)</div><div class="stat-value ${critR+critAb>0?'red':'green'} mono">${critR+critAb}</div></div>
+  `;
+
+  // Reagent table
+  const rt = document.getElementById('dash-reagents');
+  rt.innerHTML = `<tr><th>Reactivo</th><th>Stock</th><th>Días est.</th><th>Estado</th></tr>`;
+  pred.reagent_summary.forEach(r => {
+    const pct = Math.min(100, (r.vol_ml / 500) * 100);
+    const d = r.days_until_empty;
+    const cls = d===null?'ok':d>14?'ok':d>7?'warn':'crit';
+    rt.innerHTML += `<tr>
+      <td>${r.name}</td>
+      <td class="mono">${r.vol_ml} mL</td>
+      <td><span class="days-pill badge-${cls}">${d===null?'>30d':d+'d'}</span></td>
+      <td style="width:100px"><div class="progress"><div class="progress-fill fill-${cls==='ok'?'green':cls==='warn'?'amber':'red'}" style="width:${pct}%"></div></div></td>
+    </tr>`;
+  });
+
+  // Alerts
+  const alerts = [
+    ...pred.reagent_summary.filter(r=>r.days_until_empty!==null&&r.days_until_empty<=14)
+      .map(r=>({name:r.name,days:r.days_until_empty,type:'Reactivo'})),
+    ...pred.antibody_summary.filter(a=>a.days_until_empty!==null&&a.days_until_empty<=14)
+      .map(a=>({name:a.name,days:a.days_until_empty,type:'Anticuerpo'}))
+  ].sort((a,b)=>a.days-b.days);
+
+  const al = document.getElementById('dash-alerts');
+  if(!alerts.length) {
+    al.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;line-height:1.6">✓ Sin alertas críticas en los próximos 14 días.</div>`;
+  } else {
+    al.innerHTML = alerts.map(a => `
+      <div class="alert-item">
+        <div class="alert-dot" style="background:${a.days<=7?'var(--red)':'var(--amber)'}"></div>
+        <div style="flex:1">
+          <div style="font-size:13px">${a.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${a.type}</div>
+        </div>
+        <span class="badge ${a.days<=7?'badge-crit':'badge-warn'}">~${a.days}d</span>
+      </div>`).join('');
+  }
+
+  // Antibody table
+  const at = document.getElementById('dash-abs');
+  at.innerHTML = `<tr><th>Anticuerpo</th><th>Tipo</th><th>Stock (µL)</th><th>Días est.</th><th>Estado</th></tr>`;
+  pred.antibody_summary.forEach(ab => {
+    const pct = Math.min(100,(ab.vol_ul/500)*100);
+    const d = ab.days_until_empty;
+    const cls = d===null?'ok':d>14?'ok':d>7?'warn':'crit';
+    at.innerHTML += `<tr>
+      <td>${ab.name}</td>
+      <td><span class="badge ${TYPE_BADGE[ab.staining_type]}">${TYPE_LABEL[ab.staining_type]}</span></td>
+      <td class="mono">${ab.vol_ul}</td>
+      <td><span class="days-pill badge-${cls}">${d===null?'>30d':d+'d'}</span></td>
+      <td style="width:100px"><div class="progress"><div class="progress-fill fill-${cls==='ok'?'green':cls==='warn'?'amber':'red'}" style="width:${pct}%"></div></div></td>
+    </tr>`;
+  });
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+async function renderCalendar() {
+  const rows = await apiFetch(`/api/calendar?year=${calYear}&month=${calMonth+1}`);
+  calData = {};
+  rows.forEach(r => { calData[r.entry_date] = r.patient_count; });
+
+  document.getElementById('cal-label').textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const dow = document.getElementById('cal-dow');
+  dow.innerHTML = DAYS_ES.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const body = document.getElementById('cal-body');
+  const first = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date();
+
+  let html = '';
+  for(let i=0;i<first;i++) html += `<div class="cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const pts = calData[key]||0;
+    const isToday = today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    html += `<div class="cal-day ${pts>0?'has-pts':''} ${isToday?'today':''}" onclick="openDayModal('${key}',${d})">
+      <span>${d}</span>
+      ${pts>0?`<span class="pts-dot">${pts}p</span>`:''}
+    </div>`;
+  }
+  body.innerHTML = html;
+}
+
+function prevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function nextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function openDayModal(key, day) {
+  const pts = calData[key]||0;
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-title">${day} de ${MONTHS[calMonth]} ${calYear}</div>
+        <div class="form-row">
+          <label>Número de pacientes</label>
+          <input type="number" id="modal-pts" value="${pts}" min="0" max="100" autofocus>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveDay('${key}')">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-pts').focus();
+}
+
+async function saveDay(key) {
+  const pts = parseInt(document.getElementById('modal-pts').value)||0;
+  await apiFetch('/api/calendar', {method:'POST', body:JSON.stringify({date:key, patient_count:pts})});
+  closeModal();
+  renderCalendar();
+  toast('Calendario actualizado');
+}
+
+function closeModal() { document.getElementById('modal-container').innerHTML=''; }
+
+// ── Prediction ────────────────────────────────────────────────────────────────
+async function renderPrediction() {
+  const pred = await apiFetch('/api/prediction?days=30');
+
+  const daily = document.getElementById('pred-daily');
+  daily.innerHTML = `<tr><th>Fecha</th><th>Día</th><th>Pacientes</th><th>Tubos</th><th>PBS (mL)</th><th>FACS Lysing (mL)</th><th>FIX (mL)</th><th>PERM (mL)</th></tr>`;
+  if(!pred.daily.length) {
+    daily.innerHTML += `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin pacientes programados. Ve al Calendario para asignar pacientes.</td></tr>`;
+  } else {
+    pred.daily.forEach(d => {
+      const r = d.reagent_consumption;
+      const keys = Object.keys(r);
+      const pbs = r[keys.find(k=>k.toLowerCase().includes('pbs'))]??'—';
+      const lys = r[keys.find(k=>k.toLowerCase().includes('lysing'))]??'—';
+      const fix = r[keys.find(k=>k.toLowerCase().includes('fix'))]??'—';
+      const perm = r[keys.find(k=>k.toLowerCase().includes('perm'))]??'—';
+      daily.innerHTML += `<tr>
+        <td class="mono">${d.date}</td>
+        <td style="color:var(--muted)">${d.weekday}</td>
+        <td style="font-weight:600;color:var(--accent2)">${d.patients}</td>
+        <td class="mono">${d.total_tubes}</td>
+        <td class="mono">${pbs}</td><td class="mono">${lys}</td><td class="mono">${fix}</td><td class="mono">${perm}</td>
+      </tr>`;
+    });
+  }
+
+  const pr = document.getElementById('pred-reagents');
+  pr.innerHTML = `<tr><th>Reactivo</th><th>Consumo 30d</th><th>Stock actual</th><th>Días restantes</th></tr>`;
+  pred.reagent_summary.forEach(r => {
+    const d = r.days_until_empty;
+    const cls = d===null?'ok':d>14?'ok':d>7?'warn':'crit';
+    pr.innerHTML += `<tr>
+      <td>${r.name}</td>
+      <td class="mono">${r.consumed_30d_ml} mL</td>
+      <td class="mono">${r.vol_ml} mL</td>
+      <td><span class="days-pill badge-${cls}">${d===null?'>30d':d+'d'}</span></td>
+    </tr>`;
+  });
+
+  const pa = document.getElementById('pred-abs');
+  pa.innerHTML = `<tr><th>Anticuerpo</th><th>Tipo</th><th>Consumo 30d</th><th>Días restantes</th></tr>`;
+  pred.antibody_summary.forEach(ab => {
+    const d = ab.days_until_empty;
+    const cls = d===null?'ok':d>14?'ok':d>7?'warn':'crit';
+    pa.innerHTML += `<tr>
+      <td>${ab.name}</td>
+      <td><span class="badge ${TYPE_BADGE[ab.staining_type]}">${TYPE_LABEL[ab.staining_type]}</span></td>
+      <td class="mono">${ab.consumed_30d_ul} µL</td>
+      <td><span class="days-pill badge-${cls}">${d===null?'>30d':d+'d'}</span></td>
+    </tr>`;
+  });
+}
+
+// ── Reagents ─────────────────────────────────────────────────────────────────
+async function renderReagents() {
+  const reagents = await apiFetch('/api/reagents');
+  state.reagents = reagents;
+  const t = document.getElementById('reagent-table');
+  t.innerHTML = `<tr><th>Nombre</th><th>Stock (mL)</th><th>µL/paciente</th><th>Usos aprox.</th><th></th></tr>`;
+  reagents.forEach(r => {
+    const uses = Math.floor(r.vol_ml*1000/r.use_per_patient_ul);
+    t.innerHTML += `<tr>
+      <td>${r.name}</td>
+      <td class="mono">${r.vol_ml}</td>
+      <td class="mono">${r.use_per_patient_ul}</td>
+      <td class="mono">${uses} pac.</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="editReagent(${r.id})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteReagent(${r.id})">✕</button>
+      </td>
+    </tr>`;
+  });
+}
+
+async function addReagent() {
+  const name = document.getElementById('r-name').value.trim();
+  const vol = parseFloat(document.getElementById('r-vol').value);
+  const use = parseFloat(document.getElementById('r-use').value);
+  if(!name||isNaN(vol)||isNaN(use)) return toast('Completa todos los campos');
+  await apiFetch('/api/reagents',{method:'POST',body:JSON.stringify({name,vol_ml:vol,use_per_patient_ul:use})});
+  document.getElementById('r-name').value='';
+  document.getElementById('r-vol').value='';
+  document.getElementById('r-use').value='';
+  renderReagents();
+  toast('Reactivo agregado');
+}
+
+function editReagent(id) {
+  const r = state.reagents.find(x=>x.id===id);
+  document.getElementById('edit-reagent-panel').innerHTML = `
+    <div class="form-row"><label>Nombre</label><input type="text" id="er-name" value="${r.name}"></div>
+    <div class="form-row"><label>Stock actual (mL)</label><input type="number" id="er-vol" value="${r.vol_ml}" step="0.1"></div>
+    <div class="form-row"><label>µL por paciente</label><input type="number" id="er-use" value="${r.use_per_patient_ul}"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveReagent(${id})">Guardar</button>
+      <button class="btn" onclick="document.getElementById('edit-reagent-panel').innerHTML='Selecciona un reactivo.'">Cancelar</button>
+    </div>`;
+}
+
+async function saveReagent(id) {
+  const name = document.getElementById('er-name').value.trim();
+  const vol_ml = parseFloat(document.getElementById('er-vol').value);
+  const use_per_patient_ul = parseFloat(document.getElementById('er-use').value);
+  await apiFetch(`/api/reagents/${id}`,{method:'PUT',body:JSON.stringify({name,vol_ml,use_per_patient_ul})});
+  document.getElementById('edit-reagent-panel').innerHTML='Selecciona un reactivo para editar.';
+  renderReagents();
+  toast('Reactivo actualizado');
+}
+
+async function deleteReagent(id) {
+  if(!confirm('¿Eliminar este reactivo?')) return;
+  await apiFetch(`/api/reagents/${id}`,{method:'DELETE'});
+  renderReagents();
+  toast('Reactivo eliminado');
+}
+
+// ── Antibodies ────────────────────────────────────────────────────────────────
+async function renderAntibodies() {
+  const abs = await apiFetch('/api/antibodies');
+  state.antibodies = abs;
+  const t = document.getElementById('ab-table');
+  t.innerHTML = `<tr><th>Nombre</th><th>Tipo</th><th>Stock (µL)</th><th>µL/tubo</th><th>Tubos aprox.</th><th></th></tr>`;
+  abs.forEach(ab => {
+    const tubes = Math.floor(ab.vol_ul/ab.use_per_tube_ul);
+    t.innerHTML += `<tr>
+      <td>${ab.name}</td>
+      <td><span class="badge ${TYPE_BADGE[ab.staining_type]}">${TYPE_LABEL[ab.staining_type]}</span></td>
+      <td class="mono">${ab.vol_ul}</td>
+      <td class="mono">${ab.use_per_tube_ul}</td>
+      <td class="mono">${tubes}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="editAntibody(${ab.id})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAntibody(${ab.id})">✕</button>
+      </td>
+    </tr>`;
+  });
+}
+
+async function addAntibody() {
+  const name = document.getElementById('ab-name').value.trim();
+  const vol_ul = parseFloat(document.getElementById('ab-vol').value);
+  const use_per_tube_ul = parseFloat(document.getElementById('ab-use').value);
+  const staining_type = document.getElementById('ab-type').value;
+  if(!name||isNaN(vol_ul)||isNaN(use_per_tube_ul)) return toast('Completa todos los campos');
+  await apiFetch('/api/antibodies',{method:'POST',body:JSON.stringify({name,vol_ul,use_per_tube_ul,staining_type})});
+  document.getElementById('ab-name').value='';
+  document.getElementById('ab-vol').value='';
+  document.getElementById('ab-use').value='';
+  renderAntibodies();
+  toast('Anticuerpo agregado');
+}
+
+function editAntibody(id) {
+  const ab = state.antibodies.find(x=>x.id===id);
+  document.getElementById('edit-ab-panel').innerHTML = `
+    <div class="form-row"><label>Nombre</label><input type="text" id="ea-name" value="${ab.name}"></div>
+    <div class="grid2" style="gap:8px">
+      <div class="form-row"><label>Stock (µL)</label><input type="number" id="ea-vol" value="${ab.vol_ul}"></div>
+      <div class="form-row"><label>µL/tubo</label><input type="number" id="ea-use" value="${ab.use_per_tube_ul}"></div>
+    </div>
+    <div class="form-row"><label>Tipo</label>
+      <select id="ea-type">
+        <option value="ext" ${ab.staining_type==='ext'?'selected':''}>Extracelular</option>
+        <option value="int" ${ab.staining_type==='int'?'selected':''}>Intracelular</option>
+        <option value="nuc" ${ab.staining_type==='nuc'?'selected':''}>Nuclear</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveAntibody(${id})">Guardar</button>
+      <button class="btn" onclick="document.getElementById('edit-ab-panel').innerHTML='Selecciona un anticuerpo.'">Cancelar</button>
+    </div>`;
+}
+
+async function saveAntibody(id) {
+  const name = document.getElementById('ea-name').value.trim();
+  const vol_ul = parseFloat(document.getElementById('ea-vol').value);
+  const use_per_tube_ul = parseFloat(document.getElementById('ea-use').value);
+  const staining_type = document.getElementById('ea-type').value;
+  await apiFetch(`/api/antibodies/${id}`,{method:'PUT',body:JSON.stringify({name,vol_ul,use_per_tube_ul,staining_type})});
+  document.getElementById('edit-ab-panel').innerHTML='Selecciona un anticuerpo para editarlo.';
+  renderAntibodies();
+  toast('Anticuerpo actualizado');
+}
+
+async function deleteAntibody(id) {
+  if(!confirm('¿Eliminar este anticuerpo?')) return;
+  await apiFetch(`/api/antibodies/${id}`,{method:'DELETE'});
+  renderAntibodies();
+  toast('Anticuerpo eliminado');
+}
+
+// ── Panels ────────────────────────────────────────────────────────────────────
+async function renderPanels() {
+  const panels = await apiFetch('/api/panels');
+  const t = document.getElementById('panel-table');
+  t.innerHTML = `<tr><th>Nombre del panel</th><th>Tipo de tinción</th><th></th></tr>`;
+  panels.forEach(p => {
+    t.innerHTML += `<tr>
+      <td>${p.name}</td>
+      <td><span class="badge ${TYPE_BADGE[p.staining_type]}">${TYPE_LABEL[p.staining_type]}</span></td>
+      <td><button class="btn btn-sm btn-danger" onclick="deletePanel(${p.id})">✕ Eliminar</button></td>
+    </tr>`;
+  });
+}
+
+async function addPanel() {
+  const name = document.getElementById('p-name').value.trim();
+  const staining_type = document.getElementById('p-type').value;
+  if(!name) return toast('Escribe un nombre para el panel');
+  await apiFetch('/api/panels',{method:'POST',body:JSON.stringify({name,staining_type})});
+  document.getElementById('p-name').value='';
+  renderPanels();
+  toast('Panel agregado');
+}
+
+async function deletePanel(id) {
+  if(!confirm('¿Eliminar este panel?')) return;
+  await apiFetch(`/api/panels/${id}`,{method:'DELETE'});
+  renderPanels();
+  toast('Panel eliminado');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className='toast';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2500);
+}
+
+// Init
+renderDashboard();
+</script>
+</body>
+</html>
