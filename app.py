@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 import smtplib
 import json
+from dotenv import load_dotenv
+load_dotenv()
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, date, timedelta
@@ -491,10 +493,6 @@ def get_prediction():
 def index():
     return render_template("index.html")
 
-if __name__ == "__main__":
-    init_db()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
 
 # ── Email notifications ───────────────────────────────────────────────────────
 def send_alert_email(alerts, contacts):
@@ -604,3 +602,9 @@ def test_email():
     conn2.commit(); conn2.close()
     sent, reason = send_alert_email(test_alerts, contacts)
     return jsonify({'sent': sent, 'reason': reason})
+
+if __name__ == "__main__":
+    init_db()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
+
